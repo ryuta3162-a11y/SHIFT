@@ -1,223 +1,264 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { Printer, RefreshCw, AlertCircle, Calendar, Users, Clock } from 'lucide-react';
+
 /**
- * 【経堂店】シフト管理システム・完全版 (Code.gs)
- * * 機能:
- * 1. スプレッドシート上に「印刷用シート」を2行構成で作成
- * 2. Webアプリ（Vercel）向けにデータをJSON形式で提供
+ * 経堂店 プロ仕様シフト閲覧ポータル (Vercel/React版)
+ * * ■ 設計思想:
+ * 1. 1人2行構成（シフト＋メモ）を完全再現
+ * 2. 名前の中央揃え・外枠強調デザイン
+ * 3. 3D勤務時間バッジ
+ * 4. A4横サイズ・2段分割印刷最適化
  */
 
-const KYODO_APP_CONFIG = {
-  INPUT: {
-    DATE_ROW: 3,
-    DOW_ROW: 4,
-    START_ROW: 5,
-    END_ROW: 21,
-    NAME_COL: 2,
-    DATA_START_COL: 3
-  },
-  DESIGN: {
-    SHEET_NAME: "経堂-印刷用",
-    COLOR_MAIN: "#C21642",
-    COLOR_SUB: "#444444",
-    COLOR_STRIPE: "#FAFAFA",
-    COLOR_HOLIDAY_TEXT: "#D32F2F",
-    COLOR_PAID_TEXT: "#2E7D32"
-  },
-  CALC: {
-    BREAK_THRESHOLD_HRS: 6,
-    BREAK_TIME_HRS: 1,
-    PAID_LEAVE_HRS: 8
-  }
+// 設定値
+const CONFIG = {
+  MAIN_COLOR: "#C21642", // 経堂レッド
+  GAS_API_URL: "", // ここにGASのデプロイURLを貼り付けるとスプレッドシートと連動します
+  BREAK_THRESHOLD: 6,
+  BREAK_TIME: 1,
+  PAID_LEAVE_HRS: 8,
 };
 
-/**
- * 1. Webアプリの入り口 (Vercel等の外部からアクセスされた時に実行)
- */
-function doGet(e) {
-  const data = getWebDashboardData();
-  
-  // JSON形式で返却する（CORS対応のため、Vercel等からのアクセスを許可）
-  return ContentService.createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+export default function App() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-/**
- * 2. 外部アプリ(Vercel等)へ渡すためのデータ抽出ロジック
- */
-function getWebDashboardData() {
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName(KYODO_APP_CONFIG.DESIGN.SHEET_NAME);
+  // データ取得
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
     
-    if (!sheet) {
-      return { error: "「経堂-印刷用」シートが見つかりません。まず作成してください。" };
+    // GAS環境でない場合はダミーデータを表示（プレビュー用）
+    if (!CONFIG.GAS_API_URL) {
+      setTimeout(() => {
+        setData(getMockData());
+        setLoading(false);
+      }, 800);
+      return;
     }
 
-    const lastRow = sheet.getLastRow();
-    const lastCol = sheet.getLastColumn();
-    const data = sheet.getRange(1, 1, lastRow, lastCol).getValues();
-
-    const headerRow = data[0];
-    const monthTitle = headerRow[0]; 
-    
-    // 「時間」列の位置を探す
-    let totalColIdx = headerRow.indexOf("時間");
-    if (totalColIdx === -1) totalColIdx = lastCol - 3;
-
-    const dates = headerRow.slice(1, totalColIdx);
-    const dows = data[1].slice(1, totalColIdx);
-
-    let staffs = [];
-    // 3行目から2行セットでスタッフデータを取得
-    for (let i = 2; i < data.length; i += 2) {
-      const rowShift = data[i];
-      const rowMemo = (i + 1 < data.length) ? data[i+1] : null;
-      const name = String(rowShift[0]).trim();
-      
-      if (!name || name === "null" || name === "スタッフ名") continue;
-
-      staffs.push({
-        name: name,
-        shifts: rowShift.slice(1, totalColIdx).map(s => String(s || "").trim()),
-        memos: rowMemo ? rowMemo.slice(1, totalColIdx).map(m => String(m || "").trim()) : new Array(dates.length).fill(""),
-        total: rowShift[totalColIdx],
-        holidays: rowShift[totalColIdx + 1],
-        paidLeave: rowShift[totalColIdx + 2]
-      });
+    try {
+      const response = await fetch(CONFIG.GAS_API_URL);
+      const json = await response.json();
+      if (json.error) throw new Error(json.error);
+      setData(json);
+    } catch (err) {
+      setError(err.message || "データの取得に失敗しました");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    return { month: monthTitle, dates, dows, staffs };
-  } catch (e) {
-    return { error: e.toString() };
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-[#C21642] mb-4"></div>
+        <p className="text-gray-500 font-bold animate-pulse text-lg text-tighter">KYODO PORTAL 読み込み中...</p>
+      </div>
+    );
   }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-red-50 border-2 border-red-200 rounded-3xl p-8 text-center shadow-2xl">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-black text-red-700 mb-2">接続エラー</h2>
+          <p className="text-red-600 font-medium mb-6">{error}</p>
+          <button onClick={fetchData} className="w-full py-4 bg-red-600 text-white rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2">
+            <RefreshCw size={20} /> 再読み込み
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-4 md:p-10 font-sans leading-tight">
+      <div className="max-w-[1400px] mx-auto bg-white rounded-[2.5rem] shadow-2xl p-6 md:p-12 print:p-0 print:shadow-none print:rounded-none overflow-hidden">
+        
+        {/* 操作ヘッダー */}
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 print:hidden gap-6">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-[#C21642] rounded-xl flex items-center justify-center shadow-lg">
+                <Calendar className="text-white w-6 h-6" />
+              </div>
+              <h1 className="text-4xl font-black text-gray-900 tracking-tighter">{data?.month || "3月 経堂"}</h1>
+            </div>
+            <p className="text-gray-400 font-medium ml-1 flex items-center gap-2 uppercase tracking-widest text-xs">
+              <Users size={14} /> Management Dashboard
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="hidden lg:flex bg-gray-50 p-2 rounded-2xl border border-gray-100 px-6 gap-6">
+              <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-500 rounded-full shadow-sm"></span><span className="text-xs font-bold text-gray-600">× : 公休</span></div>
+              <div className="flex items-center gap-2"><span className="w-3 h-3 bg-emerald-500 rounded-full shadow-sm"></span><span className="text-xs font-bold text-gray-600">有給 : 8h加算</span></div>
+            </div>
+            <button 
+              onClick={() => window.print()}
+              className="px-10 py-5 bg-gray-900 text-white rounded-2xl font-black shadow-2xl hover:bg-black transition-all hover:scale-105 active:scale-95 flex items-center gap-3"
+            >
+              <Printer size={20} /> A4横印刷を実行
+            </button>
+          </div>
+        </header>
+
+        {/* メインコンテンツ - 2段構成 */}
+        <main id="print-area">
+          <ShiftTier data={data} start={0} end={15} label="上旬 (1日〜15日)" />
+          <div className="h-10 print:h-8" />
+          <ShiftTier data={data} start={15} end={data?.dates?.length} label="下旬 (16日〜末日)" showStats />
+        </main>
+      </div>
+    </div>
+  );
 }
 
-/**
- * 3. スプレッドシート上に「経堂-印刷用」シートを作成する
- */
-function generateKyodoProfessionalPrintShift(srcName) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const src = ss.getSheetByName(srcName);
-  const cfg = KYODO_APP_CONFIG;
-  
-  if (!src) return;
+function ShiftTier({ data, start, end, label, showStats = false }) {
+  if (!data) return null;
+  const datesInRange = data.dates.slice(start, end);
+  const dowsInRange = data.dows.slice(start, end);
 
-  // 既存の印刷用シートを削除して新規作成（結合エラー防止）
-  let dest = ss.getSheetByName(cfg.DESIGN.SHEET_NAME);
-  if (dest) ss.deleteSheet(dest);
-  dest = ss.insertSheet(cfg.DESIGN.SHEET_NAME);
-  dest.setTabColor(cfg.DESIGN.COLOR_MAIN);
+  return (
+    <div className="mb-10 print:mb-6 break-inside-avoid">
+      <div className="flex items-center gap-3 mb-4 print:hidden">
+        <div className="h-8 w-2 bg-[#C21642] rounded-full"></div>
+        <h2 className="text-xl font-black text-gray-800 tracking-tight">{label}</h2>
+      </div>
 
-  const lastCol = src.getLastColumn();
-  const rowCount = cfg.INPUT.END_ROW - cfg.INPUT.DATE_ROW + 1;
-  const rawData = src.getRange(cfg.INPUT.DATE_ROW, 1, rowCount, lastCol).getValues();
+      <div className="border border-gray-200 rounded-3xl overflow-hidden shadow-sm print:border-slate-300 print:rounded-none">
+        <table className="w-full border-collapse bg-white table-fixed">
+          <thead>
+            {/* 日付行 */}
+            <tr className="bg-white border-b border-gray-100 h-14">
+              <th className="w-[140px] bg-white sticky left-0 z-10 border-r-[3px] border-[#C21642]"></th>
+              {datesInRange.map((date, i) => (
+                <th key={i} className="text-[0.7rem] font-black text-gray-400 border-l border-gray-50 uppercase tracking-tighter">
+                  {date}
+                </th>
+              ))}
+              {showStats && <th colSpan={3} className="bg-gray-800 text-white text-[10px] uppercase font-black tracking-widest px-2">Total Stats</th>}
+            </tr>
+            {/* 曜日行 */}
+            <tr className="bg-slate-50 border-b-2 border-gray-200 h-10">
+              <td className="sticky left-0 bg-slate-50 z-10 border-r-[3px] border-[#C21642]"></td>
+              {dowsInRange.map((dow, i) => {
+                const isSun = dow === '日';
+                const isSat = dow === '土';
+                return (
+                  <td key={i} className={`text-[11px] font-black border-l border-gray-100 ${isSun ? 'text-red-500 bg-red-50' : isSat ? 'text-blue-500 bg-blue-50' : 'text-gray-600'}`}>
+                    {dow}
+                  </td>
+                );
+              })}
+              {showStats && (
+                <>
+                  <td className="bg-gray-50 text-[9px] font-bold text-gray-400 border-l border-gray-200">時間</td>
+                  <td className="bg-gray-50 text-[9px] font-bold text-gray-400 border-l border-gray-100">公休</td>
+                  <td className="bg-gray-50 text-[9px] font-bold text-gray-400 border-l border-gray-100">有給</td>
+                </>
+              )}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {data.staffs.map((staff, sIdx) => {
+              const isMito = staff.name.includes("みと");
+              return (
+                <React.Fragment key={sIdx}>
+                  {/* シフト行 */}
+                  <tr className="group">
+                    <td rowSpan={2} className="sticky left-0 bg-white z-10 border-r-[3px] border-[#C21642] text-center vertical-middle align-middle px-4 py-3">
+                      <div className="text-xl font-black text-gray-800 leading-none tracking-tighter">{staff.name}</div>
+                    </td>
+                    {datesInRange.map((_, i) => {
+                      const shift = staff.shifts[start + i];
+                      const isSun = dowsInRange[i] === '日';
+                      const isSat = dowsInRange[i] === '土';
+                      return (
+                        <td key={i} className={`h-11 border-l border-gray-50 ${isSun ? 'bg-red-50/30' : isSat ? 'bg-blue-50/30' : ''} align-middle`}>
+                          <ShiftBadge value={shift} isMito={isMito} />
+                        </td>
+                      );
+                    })}
+                    {showStats && (
+                      <>
+                        <td rowSpan={2} className="bg-slate-50 border-l border-gray-200 align-middle text-center font-black text-gray-900 text-sm">
+                          {isMito && parseFloat(staff.total) === 0 ? "" : `${staff.total}h`}
+                        </td>
+                        <td rowSpan={2} className="bg-slate-50 border-l border-gray-100 align-middle text-center font-black text-red-600 text-lg tracking-tighter">
+                          {isMito && staff.holidays === 0 ? "" : staff.holidays}
+                        </td>
+                        <td rowSpan={2} className="bg-slate-50 border-l border-gray-100 align-middle text-center font-black text-emerald-600 text-lg tracking-tighter">
+                          {isMito && staff.paidLeave === 0 ? "" : staff.paidLeave}
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                  {/* メモ行 */}
+                  <tr className="bg-white">
+                    {datesInRange.map((_, i) => {
+                      const memo = staff.memos[start + i];
+                      const isSun = dowsInRange[i] === '日';
+                      const isSat = dowsInRange[i] === '土';
+                      return (
+                        <td key={i} className={`h-8 border-l border-gray-50 ${isSun ? 'bg-red-50/30' : isSat ? 'bg-blue-50/30' : ''} align-top px-1`}>
+                          <span className="text-[9px] font-bold text-gray-400 block truncate leading-tight mt-1">{memo}</span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
-  const dates = rawData[0].slice(cfg.INPUT.DATA_START_COL - 1);
-  const dows = rawData[1].slice(cfg.INPUT.DATA_START_COL - 1);
-  const staffRows = rawData.slice(2); 
+function ShiftBadge({ value, isMito }) {
+  if (!value) return null;
+  if (value === '×' || value === '公休') return <span className="text-red-500 font-black text-xl">×</span>;
+  if (value === '有給') return <span className="text-emerald-600 font-black text-[10px] bg-emerald-50 px-2 py-1 rounded-md">有給</span>;
+  if (/\d/.test(value)) {
+    return (
+      <div className="inline-block bg-gradient-to-br from-white to-gray-50 border border-gray-200 px-2 py-1 rounded-lg shadow-[2px_2px_4px_rgba(0,0,0,0.05),inset_1px_1px_0px_white] text-[#C21642] font-black text-[10px] leading-none">
+        {value}
+      </div>
+    );
+  }
+  return <span className="text-gray-500 text-[10px] font-bold">{value}</span>;
+}
 
-  const monthLabel = srcName.match(/(\d{1,2})月/) ? srcName.match(/(\d{1,2})月/)[1] + "月 経堂" : "経堂店";
-
-  let values = [];
-  let backgrounds = [];
-  let fontColors = [];
-  let mergeRows = [];
-
-  // ヘッダー (日付)
-  let r1Val = [monthLabel], r1Bg = [cfg.DESIGN.COLOR_MAIN];
-  dates.forEach(d => {
-    r1Val.push(d instanceof Date ? d.getDate() + "日" : String(d).replace("日","") + "日");
-    r1Bg.push(cfg.DESIGN.COLOR_MAIN);
-  });
-  r1Val.push("時間", "公休", "有給"); r1Bg.push(cfg.DESIGN.COLOR_SUB, cfg.DESIGN.COLOR_SUB, cfg.DESIGN.COLOR_SUB);
-  values.push(r1Val); backgrounds.push(r1Bg); fontColors.push(new Array(r1Val.length).fill("#FFFFFF"));
-
-  // ヘッダー (曜日)
-  let r2Val = [""], r2Bg = ["#F3F3F3"];
-  dows.forEach(d => {
-    let day = String(d).trim().charAt(0);
-    r2Val.push(day);
-    if (day === "日") r2Bg.push(cfg.DESIGN.COLOR_SUN);
-    else if (day === "土") r2Bg.push(cfg.DESIGN.COLOR_SAT);
-    else r2Bg.push("#F3F3F3");
-  });
-  r2Val.push("", "", ""); r2Bg.push("#F3F3F3", "#F3F3F3", "#F3F3F3");
-  values.push(r2Val); backgrounds.push(r2Bg); fontColors.push(new Array(r2Val.length).fill("#333333"));
-
-  // スタッフデータ
-  for (let i = 0; i < staffRows.length; i += 2) {
-    const name = String(staffRows[i][cfg.INPUT.NAME_COL - 1]).trim();
-    if (!name || name === "null" || name === "MEMO") continue;
-
-    const isMito = name.includes("みと");
-    const shifts = staffRows[i].slice(cfg.INPUT.DATA_START_COL - 1);
-    const memos = (i + 1 < staffRows.length) ? staffRows[i+1].slice(cfg.INPUT.DATA_START_COL - 1) : new Array(dates.length).fill("");
-
-    let totalHrs = 0; let offDays = 0; let paidLeave = 0;
-    let sRow = [name], mRow = [""], sBg = ["#FFFFFF"], mBg = ["#FFFFFF"], sFc = ["#000000"], mFc = ["#666666"];
-
-    shifts.forEach((s, idx) => {
-      let txt = String(s || "").trim();
-      let col = "#333333", bg = (idx % 2 === 0) ? "#FFFFFF" : cfg.DESIGN.COLOR_STRIPE;
-
-      if (txt === "×" || txt === "休み" || txt === "休" || txt === "公休" || (txt === "" && !isMito)) {
-        txt = "×"; offDays++; col = cfg.DESIGN.COLOR_HOLIDAY_TEXT;
-      } else if (txt.includes("有給") || txt.includes("有休")) {
-        txt = "有給"; paidLeave++; totalHrs += cfg.CALC.PAID_LEAVE_HRS; col = cfg.DESIGN.COLOR_PAID_TEXT;
-      } else if (txt.match(/\d/)) {
-        totalHrs += calculateActualWorkHours(txt);
+// プレビュー用のダミーデータ生成
+function getMockData() {
+  const dates = Array.from({ length: 31 }, (_, i) => `${i + 1}日`);
+  const dows = ["日", "月", "火", "水", "木", "金", "土", "日", "月", "火", "水", "木", "金", "土", "日", "月", "火", "水", "木", "金", "土", "日", "月", "火", "水", "木", "金", "土", "日", "月", "火"];
+  return {
+    month: "2026年3月 経堂",
+    dates: dates,
+    dows: dows,
+    staffs: [
+      { 
+        name: "蜂谷", 
+        shifts: ["×", "13-22", "10-19", "9-18", "×", "×", "8:30-17:30", "×", "13-22", "8:30-17:30", "9-18", "×", "11-20", "12-21", "×", "13-22", "×", "13-22", "13-22", "9-18", "×", "×", "8:30-17:30", "×", "13-22", "8:30-17:30", "9-18", "×", "11-20", "12-21", "×"], 
+        memos: ["", "代行依頼中", "", "", "", "", "RYT研修", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""],
+        total: "168.0", holidays: 10, paidLeave: 1 
+      },
+      { 
+        name: "みと", 
+        shifts: ["8:30-17:30", "", "", "", "", "", "", "", "", "", "有給", "", "×", "", "有給", "", "", "8:30-17:30", "", "", "", "", "", "", "", "", "有給", "", "×", "", "有給"], 
+        memos: Array(31).fill(""),
+        total: "24.0", holidays: 2, paidLeave: 4 
       }
-
-      sRow.push(txt); sBg.push(bg); sFc.push(col);
-      mRow.push(String(memos[idx] || "")); mBg.push(bg); mFc.push("#666666");
-    });
-
-    const dT = (isMito && totalHrs == 0) ? "" : totalHrs.toFixed(1);
-    const dO = (isMito && offDays == 0) ? "" : offDays;
-    const dP = (isMito && paidLeave == 0) ? "" : paidLeave;
-    sRow.push(dT, dO, dP); sBg.push("#F9F9F9", "#F9F9F9", "#F9F9F9"); sFc.push("#000", cfg.DESIGN.COLOR_HOLIDAY_TEXT, cfg.DESIGN.COLOR_PAID_TEXT);
-    mRow.push("", "", ""); mBg.push("#F9F9F9", "#F9F9F9", "#F9F9F9");
-
-    mergeRows.push(values.length + 1);
-    values.push(sRow, mRow); backgrounds.push(sBg, mBg); fontColors.push(sFc, mFc);
-  }
-
-  const range = dest.getRange(1, 1, values.length, values[0].length);
-  range.setValues(values).setBackgrounds(backgrounds).setFontColors(fontColors).setFontFamily("Meiryo").setVerticalAlignment("middle").setHorizontalAlignment("center").setBorder(true, true, true, true, true, true, "#E0E0E0", SpreadsheetApp.BorderStyle.SOLID);
-  
-  // セルの結合
-  const totalC = values[0].length;
-  mergeRows.forEach(idx => {
-    dest.getRange(idx, 1, 2, 1).merge().setFontWeight("bold");
-    dest.getRange(idx, totalC - 2, 2, 1).merge().setFontWeight("bold");
-    dest.getRange(idx, totalC - 1, 2, 1).merge().setFontWeight("bold");
-    dest.getRange(idx, totalC, 2, 1).merge().setFontWeight("bold");
-  });
-
-  dest.setColumnWidth(1, 100);
-  for (let c = 2; c <= dates.length + 1; c++) dest.setColumnWidth(c, 32);
-  ss.toast("印刷用シートを作成しました");
-}
-
-function calculateActualWorkHours(str) {
-  const clean = str.replace(/[０-９：－～]/g, s => String.fromCharCode(s.charCodeAt(0)-0xFEE0)).replace(/\s/g, "");
-  const m = clean.match(/^(\d{1,2})[:：]?(\d{2})?[-~～](\d{1,2})[:：]?(\d{2})?/);
-  if (m) {
-    const sH = parseInt(m[1]); const sM = parseInt(m[2] || "00"); const eH = parseInt(m[3]); const eM = parseInt(m[4] || "00");
-    let diff = (eH + eM/60) - (sH + sM/60);
-    if (diff < 0) diff += 24; 
-    if (diff >= 6) diff -= 1;
-    return Math.max(0, diff);
-  }
-  return 0;
-}
-
-/**
- * メニュー表示用
- */
-function showKyodoShiftPrintDialog() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheets = ss.getSheets();
-  const sheetNames = sheets.map(s => s.getName()).filter(n => n.includes("シフト"));
-  const html = `<div style="font-family:sans-serif;padding:15px;"><h3>経堂シフト作成</h3><select id="s" style="width:100%;padding:8px;">${sheetNames.map(n=>`<option>${n}</option>`).join('')}</select><br><br><button onclick="run()" style="width:100%;padding:10px;background:#C21642;color:white;border:none;border-radius:4px;font-weight:bold;cursor:pointer;">作成開始</button></div><script>function run(){google.script.run.withSuccessHandler(()=>google.script.host.close()).generateKyodoProfessionalPrintShift(document.getElementById('s').value);}</script>`;
-  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setHeight(200).setWidth(300), "印刷用シフト作成");
+    ]
+  };
 }
