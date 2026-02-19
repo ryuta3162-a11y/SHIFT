@@ -1,0 +1,223 @@
+/**
+ * 【経堂店】シフト管理システム・完全版 (Code.gs)
+ * * 機能:
+ * 1. スプレッドシート上に「印刷用シート」を2行構成で作成
+ * 2. Webアプリ（Vercel）向けにデータをJSON形式で提供
+ */
+
+const KYODO_APP_CONFIG = {
+  INPUT: {
+    DATE_ROW: 3,
+    DOW_ROW: 4,
+    START_ROW: 5,
+    END_ROW: 21,
+    NAME_COL: 2,
+    DATA_START_COL: 3
+  },
+  DESIGN: {
+    SHEET_NAME: "経堂-印刷用",
+    COLOR_MAIN: "#C21642",
+    COLOR_SUB: "#444444",
+    COLOR_STRIPE: "#FAFAFA",
+    COLOR_HOLIDAY_TEXT: "#D32F2F",
+    COLOR_PAID_TEXT: "#2E7D32"
+  },
+  CALC: {
+    BREAK_THRESHOLD_HRS: 6,
+    BREAK_TIME_HRS: 1,
+    PAID_LEAVE_HRS: 8
+  }
+};
+
+/**
+ * 1. Webアプリの入り口 (Vercel等の外部からアクセスされた時に実行)
+ */
+function doGet(e) {
+  const data = getWebDashboardData();
+  
+  // JSON形式で返却する（CORS対応のため、Vercel等からのアクセスを許可）
+  return ContentService.createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * 2. 外部アプリ(Vercel等)へ渡すためのデータ抽出ロジック
+ */
+function getWebDashboardData() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(KYODO_APP_CONFIG.DESIGN.SHEET_NAME);
+    
+    if (!sheet) {
+      return { error: "「経堂-印刷用」シートが見つかりません。まず作成してください。" };
+    }
+
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
+    const data = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+
+    const headerRow = data[0];
+    const monthTitle = headerRow[0]; 
+    
+    // 「時間」列の位置を探す
+    let totalColIdx = headerRow.indexOf("時間");
+    if (totalColIdx === -1) totalColIdx = lastCol - 3;
+
+    const dates = headerRow.slice(1, totalColIdx);
+    const dows = data[1].slice(1, totalColIdx);
+
+    let staffs = [];
+    // 3行目から2行セットでスタッフデータを取得
+    for (let i = 2; i < data.length; i += 2) {
+      const rowShift = data[i];
+      const rowMemo = (i + 1 < data.length) ? data[i+1] : null;
+      const name = String(rowShift[0]).trim();
+      
+      if (!name || name === "null" || name === "スタッフ名") continue;
+
+      staffs.push({
+        name: name,
+        shifts: rowShift.slice(1, totalColIdx).map(s => String(s || "").trim()),
+        memos: rowMemo ? rowMemo.slice(1, totalColIdx).map(m => String(m || "").trim()) : new Array(dates.length).fill(""),
+        total: rowShift[totalColIdx],
+        holidays: rowShift[totalColIdx + 1],
+        paidLeave: rowShift[totalColIdx + 2]
+      });
+    }
+
+    return { month: monthTitle, dates, dows, staffs };
+  } catch (e) {
+    return { error: e.toString() };
+  }
+}
+
+/**
+ * 3. スプレッドシート上に「経堂-印刷用」シートを作成する
+ */
+function generateKyodoProfessionalPrintShift(srcName) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const src = ss.getSheetByName(srcName);
+  const cfg = KYODO_APP_CONFIG;
+  
+  if (!src) return;
+
+  // 既存の印刷用シートを削除して新規作成（結合エラー防止）
+  let dest = ss.getSheetByName(cfg.DESIGN.SHEET_NAME);
+  if (dest) ss.deleteSheet(dest);
+  dest = ss.insertSheet(cfg.DESIGN.SHEET_NAME);
+  dest.setTabColor(cfg.DESIGN.COLOR_MAIN);
+
+  const lastCol = src.getLastColumn();
+  const rowCount = cfg.INPUT.END_ROW - cfg.INPUT.DATE_ROW + 1;
+  const rawData = src.getRange(cfg.INPUT.DATE_ROW, 1, rowCount, lastCol).getValues();
+
+  const dates = rawData[0].slice(cfg.INPUT.DATA_START_COL - 1);
+  const dows = rawData[1].slice(cfg.INPUT.DATA_START_COL - 1);
+  const staffRows = rawData.slice(2); 
+
+  const monthLabel = srcName.match(/(\d{1,2})月/) ? srcName.match(/(\d{1,2})月/)[1] + "月 経堂" : "経堂店";
+
+  let values = [];
+  let backgrounds = [];
+  let fontColors = [];
+  let mergeRows = [];
+
+  // ヘッダー (日付)
+  let r1Val = [monthLabel], r1Bg = [cfg.DESIGN.COLOR_MAIN];
+  dates.forEach(d => {
+    r1Val.push(d instanceof Date ? d.getDate() + "日" : String(d).replace("日","") + "日");
+    r1Bg.push(cfg.DESIGN.COLOR_MAIN);
+  });
+  r1Val.push("時間", "公休", "有給"); r1Bg.push(cfg.DESIGN.COLOR_SUB, cfg.DESIGN.COLOR_SUB, cfg.DESIGN.COLOR_SUB);
+  values.push(r1Val); backgrounds.push(r1Bg); fontColors.push(new Array(r1Val.length).fill("#FFFFFF"));
+
+  // ヘッダー (曜日)
+  let r2Val = [""], r2Bg = ["#F3F3F3"];
+  dows.forEach(d => {
+    let day = String(d).trim().charAt(0);
+    r2Val.push(day);
+    if (day === "日") r2Bg.push(cfg.DESIGN.COLOR_SUN);
+    else if (day === "土") r2Bg.push(cfg.DESIGN.COLOR_SAT);
+    else r2Bg.push("#F3F3F3");
+  });
+  r2Val.push("", "", ""); r2Bg.push("#F3F3F3", "#F3F3F3", "#F3F3F3");
+  values.push(r2Val); backgrounds.push(r2Bg); fontColors.push(new Array(r2Val.length).fill("#333333"));
+
+  // スタッフデータ
+  for (let i = 0; i < staffRows.length; i += 2) {
+    const name = String(staffRows[i][cfg.INPUT.NAME_COL - 1]).trim();
+    if (!name || name === "null" || name === "MEMO") continue;
+
+    const isMito = name.includes("みと");
+    const shifts = staffRows[i].slice(cfg.INPUT.DATA_START_COL - 1);
+    const memos = (i + 1 < staffRows.length) ? staffRows[i+1].slice(cfg.INPUT.DATA_START_COL - 1) : new Array(dates.length).fill("");
+
+    let totalHrs = 0; let offDays = 0; let paidLeave = 0;
+    let sRow = [name], mRow = [""], sBg = ["#FFFFFF"], mBg = ["#FFFFFF"], sFc = ["#000000"], mFc = ["#666666"];
+
+    shifts.forEach((s, idx) => {
+      let txt = String(s || "").trim();
+      let col = "#333333", bg = (idx % 2 === 0) ? "#FFFFFF" : cfg.DESIGN.COLOR_STRIPE;
+
+      if (txt === "×" || txt === "休み" || txt === "休" || txt === "公休" || (txt === "" && !isMito)) {
+        txt = "×"; offDays++; col = cfg.DESIGN.COLOR_HOLIDAY_TEXT;
+      } else if (txt.includes("有給") || txt.includes("有休")) {
+        txt = "有給"; paidLeave++; totalHrs += cfg.CALC.PAID_LEAVE_HRS; col = cfg.DESIGN.COLOR_PAID_TEXT;
+      } else if (txt.match(/\d/)) {
+        totalHrs += calculateActualWorkHours(txt);
+      }
+
+      sRow.push(txt); sBg.push(bg); sFc.push(col);
+      mRow.push(String(memos[idx] || "")); mBg.push(bg); mFc.push("#666666");
+    });
+
+    const dT = (isMito && totalHrs == 0) ? "" : totalHrs.toFixed(1);
+    const dO = (isMito && offDays == 0) ? "" : offDays;
+    const dP = (isMito && paidLeave == 0) ? "" : paidLeave;
+    sRow.push(dT, dO, dP); sBg.push("#F9F9F9", "#F9F9F9", "#F9F9F9"); sFc.push("#000", cfg.DESIGN.COLOR_HOLIDAY_TEXT, cfg.DESIGN.COLOR_PAID_TEXT);
+    mRow.push("", "", ""); mBg.push("#F9F9F9", "#F9F9F9", "#F9F9F9");
+
+    mergeRows.push(values.length + 1);
+    values.push(sRow, mRow); backgrounds.push(sBg, mBg); fontColors.push(sFc, mFc);
+  }
+
+  const range = dest.getRange(1, 1, values.length, values[0].length);
+  range.setValues(values).setBackgrounds(backgrounds).setFontColors(fontColors).setFontFamily("Meiryo").setVerticalAlignment("middle").setHorizontalAlignment("center").setBorder(true, true, true, true, true, true, "#E0E0E0", SpreadsheetApp.BorderStyle.SOLID);
+  
+  // セルの結合
+  const totalC = values[0].length;
+  mergeRows.forEach(idx => {
+    dest.getRange(idx, 1, 2, 1).merge().setFontWeight("bold");
+    dest.getRange(idx, totalC - 2, 2, 1).merge().setFontWeight("bold");
+    dest.getRange(idx, totalC - 1, 2, 1).merge().setFontWeight("bold");
+    dest.getRange(idx, totalC, 2, 1).merge().setFontWeight("bold");
+  });
+
+  dest.setColumnWidth(1, 100);
+  for (let c = 2; c <= dates.length + 1; c++) dest.setColumnWidth(c, 32);
+  ss.toast("印刷用シートを作成しました");
+}
+
+function calculateActualWorkHours(str) {
+  const clean = str.replace(/[０-９：－～]/g, s => String.fromCharCode(s.charCodeAt(0)-0xFEE0)).replace(/\s/g, "");
+  const m = clean.match(/^(\d{1,2})[:：]?(\d{2})?[-~～](\d{1,2})[:：]?(\d{2})?/);
+  if (m) {
+    const sH = parseInt(m[1]); const sM = parseInt(m[2] || "00"); const eH = parseInt(m[3]); const eM = parseInt(m[4] || "00");
+    let diff = (eH + eM/60) - (sH + sM/60);
+    if (diff < 0) diff += 24; 
+    if (diff >= 6) diff -= 1;
+    return Math.max(0, diff);
+  }
+  return 0;
+}
+
+/**
+ * メニュー表示用
+ */
+function showKyodoShiftPrintDialog() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ss.getSheets();
+  const sheetNames = sheets.map(s => s.getName()).filter(n => n.includes("シフト"));
+  const html = `<div style="font-family:sans-serif;padding:15px;"><h3>経堂シフト作成</h3><select id="s" style="width:100%;padding:8px;">${sheetNames.map(n=>`<option>${n}</option>`).join('')}</select><br><br><button onclick="run()" style="width:100%;padding:10px;background:#C21642;color:white;border:none;border-radius:4px;font-weight:bold;cursor:pointer;">作成開始</button></div><script>function run(){google.script.run.withSuccessHandler(()=>google.script.host.close()).generateKyodoProfessionalPrintShift(document.getElementById('s').value);}</script>`;
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setHeight(200).setWidth(300), "印刷用シフト作成");
+}
