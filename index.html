@@ -30,7 +30,6 @@
       th, td { border: 1px solid #cbd5e1 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
 
-    /* レイアウト基本設定 */
     .empty-corner { background-color: white !important; border: none !important; }
     .header-date { background-color: white; color: #1e293b; font-weight: 800; border-bottom: 2px solid #e2e8f0; height: 40px; }
     .header-dow { background-color: #f8fafc; color: #64748b; font-size: 0.75rem; font-weight: 900; height: 25px; }
@@ -83,17 +82,16 @@
     .holiday-x { color: #dc2626; font-size: 1.6rem; font-weight: 900; }
     .paid-leave { color: #059669; font-weight: 900; font-size: 0.95rem; }
     
-    /* セル高さ調整（2行1セット用） */
+    /* セル高さ調整 */
     .shift-cell { min-width: 50px; height: 38px; border-bottom: none !important; }
     .memo-cell { min-width: 50px; height: 26px; vertical-align: top !important; border-top: none !important; }
     
-    /* 土日カラー設定 */
+    /* 土日カラー */
     .text-sun { color: #dc2626 !important; }
     .text-sat { color: #2563eb !important; }
     .bg-sun { background-color: #fff1f2 !important; }
     .bg-sat { background-color: #eff6ff !important; }
 
-    /* 各セクションの見出しタイトル（画面上のみ表示） */
     .table-title {
       font-size: 1.4rem;
       font-weight: 900;
@@ -121,10 +119,10 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState, useEffect, Fragment } = React;
 
     const CONFIG = {
-      // ★提供されたGASのデプロイURLをここに反映済み
+      // 提供されたGASのデプロイURLをここに反映済み
       GAS_API_URL: "https://script.google.com/macros/s/AKfycbyLLX4EzfuvswXUgFwL19U8ZeZcuQ4pr287p-etGdEwG3Ej6kFMCAqkqR2hlr1FvaEo/exec" 
     };
 
@@ -141,7 +139,7 @@
             if (json.error) throw new Error(json.error);
             setData(json);
           } catch (err) {
-            setError(err.message || "スプレッドシートとの通信に失敗しました。GASのデプロイ設定が「全員（匿名を含む）」になっているか確認してください。");
+            setError(err.message || "スプレッドシートとの通信に失敗しました。");
           } finally {
             setLoading(false);
           }
@@ -161,7 +159,7 @@
           <div className="bg-red-50 border-4 border-red-100 p-10 rounded-[2.5rem] text-center max-w-xl shadow-2xl">
             <h2 className="text-3xl font-black text-red-600 mb-4 tracking-tighter">CONNECTION ERROR</h2>
             <p className="text-red-500 font-bold mb-8 leading-relaxed">{error}</p>
-            <button onClick={() => window.location.reload()} className="px-12 py-4 bg-red-600 text-white rounded-2xl font-black hover:bg-red-700 shadow-xl transition-all active:scale-95">再試行する</button>
+            <button onClick={() => window.location.reload()} className="px-12 py-4 bg-red-600 text-white rounded-2xl font-black hover:bg-red-700 shadow-xl">再試行する</button>
           </div>
         </div>
       );
@@ -169,7 +167,6 @@
       return (
         <div className="p-4 md:p-10 print:p-0">
           <div className="max-w-full mx-auto">
-            {/* 画面上のヘッダー */}
             <header className="flex justify-between items-end mb-12 no-print border-b-4 border-gray-100 pb-8">
               <div>
                 <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-2">{data.month}</h1>
@@ -184,11 +181,10 @@
               </button>
             </header>
 
-            {/* シフトテーブル表示（上下2段分割） */}
             <main>
               <ShiftTierTable data={data} start={0} end={15} label="上旬 (1日〜15日)" />
               <div className="h-14 print:h-8" />
-              <ShiftTierTable data={data} start={15} end={data.dates.length} label="下旬 (16日〜末日)" showStats />
+              <ShiftTierTable data={data} start={15} end={data.dates.length} label="下旬 (16日〜末日)" showStats={true} />
             </main>
           </div>
         </div>
@@ -208,7 +204,7 @@
                 <tr className="header-date">
                   <th className="empty-corner w-[140px] sticky left-0 z-30 border-r-[3.5px] border-[#C21642]"></th>
                   {datesInRange.map((d, i) => (
-                    <th key={i} className="text-[0.7rem] font-black text-gray-400 border-l border-gray-100 uppercase tracking-tighter">{d}</th>
+                    <th key={i} className="text-[0.7rem] font-black text-gray-400 border-l border-gray-50 uppercase tracking-tighter">{d}</th>
                   ))}
                   {showStats && <th colSpan={3} className="bg-gray-800 text-white text-[10px] font-black tracking-[0.2em] uppercase">Total Stats</th>}
                 </tr>
@@ -219,11 +215,11 @@
                     return <td key={i} className={`text-[11px] font-black border-l border-gray-100 ${cls}`}>{dw}</td>;
                   })}
                   {showStats && (
-                    <>
-                      <td className="bg-gray-100 text-[9px] font-bold text-gray-400 border-l border-gray-200 stats-cell">時間</td>
-                      <td className="bg-gray-100 text-[9px] font-bold text-gray-400 border-l border-gray-100 stats-cell">公休</td>
-                      <td className="bg-gray-100 text-[9px] font-bold text-gray-400 border-l border-gray-100 stats-cell">有給</td>
-                    </>
+                    <Fragment>
+                      <td className="bg-gray-100 text-[9px] font-bold text-gray-400 border-l border-gray-200 stats-cell text-center">時間</td>
+                      <td className="bg-gray-100 text-[9px] font-bold text-gray-400 border-l border-gray-100 stats-cell text-center">公休</td>
+                      <td className="bg-gray-100 text-[9px] font-bold text-gray-400 border-l border-gray-100 stats-cell text-center">有給</td>
+                    </Fragment>
                   )}
                 </tr>
               </thead>
@@ -231,8 +227,7 @@
                 {data.staffs.map((staff, sIdx) => {
                   const isMito = staff.name.includes("みと");
                   return (
-                    <React.Fragment key={sIdx}>
-                      {/* シフト時間行 */}
+                    <Fragment key={sIdx}>
                       <tr>
                         <td rowSpan={2} className="name-cell px-4 py-3">{staff.name}</td>
                         {datesInRange.map((_, i) => {
@@ -244,38 +239,37 @@
                           else if (s && /\d/.test(s)) content = <div className="time-badge">{s}</div>;
                           
                           return (
-                            <td key={i} className={`shift-cell border-l border-gray-50 ${dw === '日' ? 'bg-red-50/20' : dw === '土' ? 'bg-blue-50/20' : ''} align-middle`}>
+                            <td key={i} className={`shift-cell border-l border-gray-50 ${dw === '日' ? 'bg-red-50/20' : dw === '土' ? 'bg-blue-50/20' : ''} align-middle text-center`}>
                               {content}
                             </td>
                           );
                         })}
                         {showStats && (
-                          <>
-                            <td rowSpan={2} className="bg-slate-50 border-l border-gray-200 font-black text-sm align-middle stats-cell">
+                          <Fragment>
+                            <td rowSpan={2} className="bg-slate-50 border-l border-gray-200 font-black text-sm align-middle stats-cell text-center">
                               {(isMito && parseFloat(staff.total) === 0) ? "" : `${staff.total}h`}
                             </td>
-                            <td rowSpan={2} className="bg-slate-50 border-l border-gray-100 font-black text-red-600 text-xl align-middle stats-cell tracking-tighter">
+                            <td rowSpan={2} className="bg-slate-50 border-l border-gray-100 font-black text-red-600 text-xl align-middle stats-cell tracking-tighter text-center">
                               {(isMito && staff.holidays === 0) ? "" : staff.holidays}
                             </td>
-                            <td rowSpan={2} className="bg-slate-50 border-l border-gray-100 font-black text-emerald-600 text-xl align-middle stats-cell tracking-tighter">
+                            <td rowSpan={2} className="bg-slate-50 border-l border-gray-100 font-black text-emerald-600 text-xl align-middle stats-cell tracking-tighter text-center">
                               {(isMito && staff.paidLeave === 0) ? "" : staff.paidLeave}
                             </td>
-                          </>
+                          </Fragment>
                         )}
                       </tr>
-                      {/* 備考テキスト行 */}
                       <tr>
                         {datesInRange.map((_, i) => {
                           const m = staff.memos[start + i];
                           const dw = dowsInRange[i];
                           return (
-                            <td key={i} className={`memo-cell border-l border-gray-50 ${dw === '日' ? 'bg-red-50/20' : dw === '土' ? 'bg-blue-50/20' : ''} align-top px-1 pt-0.5`}>
+                            <td key={i} className={`memo-cell border-l border-gray-50 ${dw === '日' ? 'bg-red-50/20' : dw === '土' ? 'bg-blue-50/20' : ''} align-top px-1 pt-0.5 text-center`}>
                               <span className="memo-text">{m}</span>
                             </td>
                           );
                         })}
                       </tr>
-                    </React.Fragment>
+                    </Fragment>
                   );
                 })}
               </tbody>
