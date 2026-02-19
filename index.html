@@ -10,107 +10,111 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Roboto:wght@700&display=swap');
     
     body { 
       font-family: 'Noto Sans JP', sans-serif; 
       background-color: #ffffff; 
       color: #1e293b;
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
     }
 
-    /* A4横 印刷最適化スタイル */
+    /* 印刷設定: A4横・余白極小 */
     @media print {
-      @page { size: A4 landscape; margin: 6mm; }
-      body { background-color: white; }
+      @page { size: A4 landscape; margin: 4mm; }
+      body { background-color: white; -webkit-print-color-adjust: exact; }
       .no-print { display: none !important; }
       .print-container { padding: 0 !important; width: 100% !important; max-width: none !important; }
-      .table-wrapper { border: 1.5px solid #cbd5e1 !important; border-radius: 0 !important; overflow: visible !important; }
-      th, td { border: 1px solid #cbd5e1 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      /* 枠線を強制 */
+      .table-wrapper { border: 2px solid #94a3b8 !important; border-radius: 0 !important; overflow: visible !important; }
+      th, td { border: 1px solid #94a3b8 !important; }
+      /* 背景色を印刷に出す */
+      .bg-red-50 { background-color: #fef2f2 !important; }
+      .bg-blue-50 { background-color: #eff6ff !important; }
     }
 
-    .empty-corner { background-color: white !important; border: none !important; }
-    .header-date { background-color: white; color: #1e293b; font-weight: 800; border-bottom: 2px solid #e2e8f0; height: 40px; }
-    .header-dow { background-color: #f8fafc; color: #64748b; font-size: 0.75rem; font-weight: 900; height: 25px; }
+    /* ヘッダー固定解除（印刷時は固定しない） */
+    .header-fixed { position: sticky; top: 0; z-index: 50; }
     
-    /* スタッフ名セル: 中央揃え・外枠強調（経堂レッド） */
+    /* 名前セル: 幅と高さを完全固定 */
     .name-cell { 
-      position: sticky; 
-      left: 0; 
       background-color: #ffffff !important; 
-      z-index: 20; 
-      border: 3.5px solid #C21642 !important; 
-      min-width: 140px; 
-      font-size: 1.35rem;
+      width: 120px !important; /* 幅固定 */
+      min-width: 120px !important;
+      max-width: 120px !important;
+      font-size: 1.1rem;
       font-weight: 900;
       text-align: center !important; 
       vertical-align: middle !important;
       color: #1e293b;
-      box-shadow: 2px 0 5px rgba(0,0,0,0.04);
-    }
-    
-    /* 3Dバッジ: 勤務時間の立体感デザイン */
-    .time-badge { 
-      display: inline-block;
-      background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
-      color: #C21642; 
-      padding: 4px 8px; 
-      border-radius: 6px; 
-      border: 1px solid #e2e8f0; 
-      font-size: 0.88rem;
-      font-weight: 900;
-      box-shadow: 2px 2px 5px rgba(0,0,0,0.07), inset -1px -1px 2px rgba(255,255,255,0.8);
-      line-height: 1;
-      letter-spacing: -0.02em;
-    }
-
-    /* 備考テキストのデザイン */
-    .memo-text {
-      font-size: 0.65rem;
-      color: #475569;
-      line-height: 1.1;
-      font-weight: 600;
-      display: block;
-      padding: 0 4px;
+      border-right: 3px solid #C21642 !important;
       overflow: hidden;
       white-space: nowrap;
-      text-overflow: ellipsis;
+    }
+    
+    /* 勤務時間バッジ: 黒文字・シンプル化 */
+    .time-badge { 
+      display: inline-block;
+      color: #1f2937; /* 黒に近いグレー */
+      font-family: 'Roboto', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 900;
+      line-height: 1;
+      white-space: nowrap;
     }
 
-    /* 公休と有給の装飾 */
-    .holiday-x { color: #dc2626; font-size: 1.6rem; font-weight: 900; }
-    .paid-leave { color: #059669; font-weight: 900; font-size: 0.95rem; }
+    /* メモテキスト: 大きく表示 */
+    .memo-text {
+      font-size: 0.75rem; /* サイズアップ */
+      color: #334155;
+      font-weight: 700;
+      line-height: 1.1;
+      display: -webkit-box;
+      -webkit-line-clamp: 3; /* 3行まで表示 */
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      word-break: break-all;
+    }
+
+    /* 公休（×）: 小さく控えめに */
+    .holiday-x { color: #dc2626; font-size: 1.0rem; font-weight: 700; opacity: 0.7; }
     
-    /* セル高さ調整 */
-    .shift-cell { min-width: 50px; height: 38px; border-bottom: none !important; }
-    .memo-cell { min-width: 50px; height: 26px; vertical-align: top !important; border-top: none !important; }
+    /* 有給 */
+    .paid-leave { color: #059669; font-weight: 900; font-size: 0.8rem; background: #d1fae5; padding: 2px 4px; border-radius: 4px; }
+    
+    /* 行の高さ設定: 下段を広く */
+    .row-shift { height: 35px; } /* 上段 */
+    .row-memo { height: 55px; }  /* 下段（1.5倍程度） */
+    
+    /* セル共通: 幅固定 */
+    .day-cell {
+      width: 42px !important; /* 日付列の幅固定 */
+      min-width: 42px !important;
+      max-width: 42px !important;
+      padding: 2px !important;
+      vertical-align: middle;
+    }
     
     /* 土日カラー */
     .text-sun { color: #dc2626 !important; }
     .text-sat { color: #2563eb !important; }
-    .bg-sun { background-color: #fff1f2 !important; }
+    .bg-sun { background-color: #fef2f2 !important; }
     .bg-sat { background-color: #eff6ff !important; }
 
+    /* タイトルデザイン */
     .table-title {
-      font-size: 1.4rem;
-      font-weight: 900;
-      color: #C21642;
-      padding: 10px 24px;
-      background-color: #fdf2f2;
-      border-left: 8px solid #C21642;
-      margin-bottom: 20px;
-      display: inline-block;
-      border-radius: 0 12px 12px 0;
+      font-size: 1.2rem; font-weight: 900; color: #C21642;
+      padding: 5px 15px; background-color: #fff1f2; border-left: 6px solid #C21642;
+      margin-bottom: 10px; display: inline-block;
     }
 
-    .tier-container { margin-bottom: 50px; page-break-inside: avoid; width: 100%; }
-    .stats-cell { border-left: 2px solid #e2e8f0 !important; background-color: #f8fafc !important; font-weight: 900; }
+    .tier-container { margin-bottom: 20px; page-break-inside: avoid; }
+    .stats-cell { background-color: #f8fafc !important; font-weight: 900; font-size: 0.75rem !important; }
     
-    /* ローディングアニメーション */
+    /* ローダー */
     .loader {
       border: 4px solid #f3f3f3; border-top: 4px solid #C21642; border-radius: 50%;
-      width: 35px; height: 35px; animation: spin 1s linear infinite; display: inline-block;
+      width: 40px; height: 40px; animation: spin 1s linear infinite; display: inline-block;
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
@@ -122,9 +126,55 @@
     const { useState, useEffect, Fragment } = React;
 
     const CONFIG = {
-      // 提供されたGASのデプロイURLをここに反映済み
+      // 以前いただいたGAS URL
       GAS_API_URL: "https://script.google.com/macros/s/AKfycbyLLX4EzfuvswXUgFwL19U8ZeZcuQ4pr287p-etGdEwG3Ej6kFMCAqkqR2hlr1FvaEo/exec" 
     };
+
+    /**
+     * 日付文字列整形関数
+     * 変な英語の日付(Mon Oct...)が来ても、強制的に見やすく変換します
+     */
+    function formatCellContent(value) {
+      if (!value) return "";
+      
+      // 文字列に変換
+      const str = String(value);
+
+      // "×" や "公休" はそのまま
+      if (str === '×' || str === '公休' || str === '休') return <span className="holiday-x">×</span>;
+      
+      // "有給"
+      if (str.includes('有給') || str.includes('有休')) return <span className="paid-leave">有給</span>;
+
+      // 長い英語の日付フォーマット (例: Mon Oct 19 2026...) が混入した場合の救済処理
+      if (str.includes("GMT") || (str.match(/[A-Za-z]{3}\s[A-Za-z]{3}/) && str.length > 10)) {
+        try {
+          const d = new Date(str);
+          if (!isNaN(d.getTime())) {
+            // 時間があれば時間を、なければ日付を表示
+            const h = d.getHours();
+            const m = d.getMinutes();
+            if (h === 0 && m === 0) {
+              // 時間が0:00なら日付だけ表示 (例: 19日)
+              return <span className="text-xs text-gray-400 font-bold">{d.getDate()}日</span>;
+            }
+            // 時間があれば "9:30" のように整形
+            const timeStr = `${h}:${m.toString().padStart(2, '0')}`;
+            return <div className="time-badge">{timeStr}</div>;
+          }
+        } catch (e) {
+          return <span className="text-[8px] text-red-300">Err</span>;
+        }
+      }
+
+      // 通常の数字（時間）の場合 "9-18" や "13:00"
+      if (/\d/.test(str)) {
+        return <div className="time-badge">{str}</div>;
+      }
+
+      // それ以外（文字データなど）
+      return <span className="text-xs font-bold text-gray-500">{str}</span>;
+    }
 
     function App() {
       const [data, setData] = useState(null);
@@ -139,7 +189,7 @@
             if (json.error) throw new Error(json.error);
             setData(json);
           } catch (err) {
-            setError(err.message || "スプレッドシートとの通信に失敗しました。");
+            setError(err.message || "データ取得エラー");
           } finally {
             setLoading(false);
           }
@@ -148,42 +198,38 @@
       }, []);
 
       if (loading) return (
-        <div className="min-h-screen flex flex-col items-center justify-center space-y-6">
+        <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
           <div className="loader"></div>
-          <p className="font-black text-[#C21642] animate-pulse uppercase tracking-[0.2em] text-sm">Kyodo Shift Portal Loading...</p>
+          <p className="font-bold text-gray-400 tracking-widest text-xs">LOADING...</p>
         </div>
       );
 
       if (error) return (
-        <div className="min-h-screen flex items-center justify-center p-10">
-          <div className="bg-red-50 border-4 border-red-100 p-10 rounded-[2.5rem] text-center max-w-xl shadow-2xl">
-            <h2 className="text-3xl font-black text-red-600 mb-4 tracking-tighter">CONNECTION ERROR</h2>
-            <p className="text-red-500 font-bold mb-8 leading-relaxed">{error}</p>
-            <button onClick={() => window.location.reload()} className="px-12 py-4 bg-red-600 text-white rounded-2xl font-black hover:bg-red-700 shadow-xl">再試行する</button>
-          </div>
+        <div className="p-10 text-center">
+          <p className="text-red-500 font-bold mb-4">{error}</p>
+          <button onClick={() => window.location.reload()} className="bg-gray-200 px-4 py-2 rounded">Retry</button>
         </div>
       );
 
       return (
-        <div className="p-4 md:p-10 print:p-0">
-          <div className="max-w-full mx-auto">
-            <header className="flex justify-between items-end mb-12 no-print border-b-4 border-gray-100 pb-8">
-              <div>
-                <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-2">{data.month}</h1>
-                <p className="text-gray-400 font-bold uppercase tracking-[0.3em] text-xs">Management System v2.0</p>
-              </div>
-              <button 
-                onClick={() => window.print()} 
-                className="px-12 py-5 bg-gray-900 text-white rounded-[1.25rem] font-black shadow-2xl hover:bg-black transition-all hover:scale-105 active:scale-95 flex items-center gap-3"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                A4横印刷 実行
+        <div className="p-2 md:p-6 print:p-0">
+          <div className="max-w-[1600px] mx-auto">
+            {/* ヘッダー */}
+            <header className="flex justify-between items-end mb-6 no-print border-b pb-4">
+              <h1 className="text-3xl font-black text-gray-800">{data.month}</h1>
+              <button onClick={() => window.print()} className="bg-gray-900 text-white px-6 py-3 rounded-lg font-bold hover:bg-black transition shadow-lg">
+                印刷する (A4横)
               </button>
             </header>
 
             <main>
+              {/* 1日〜15日 */}
               <ShiftTierTable data={data} start={0} end={15} label="上旬 (1日〜15日)" />
-              <div className="h-14 print:h-8" />
+              
+              {/* 印刷時の改ページ調整用スペーサー */}
+              <div className="h-8 print:h-4"></div>
+              
+              {/* 16日〜末日 */}
               <ShiftTierTable data={data} start={15} end={data.dates.length} label="下旬 (16日〜末日)" showStats={true} />
             </main>
           </div>
@@ -198,72 +244,75 @@
       return (
         <div className="tier-container">
           <div className="table-title no-print">{label}</div>
-          <div className="table-wrapper border border-gray-200 rounded-[2rem] overflow-hidden shadow-lg">
+          <div className="table-wrapper border border-gray-400 overflow-hidden">
             <table className="w-full border-collapse bg-white table-fixed">
+              <colgroup>
+                <col style={{width: '120px'}} /> {/* 名前列固定 */}
+                {datesInRange.map((_, i) => <col key={i} style={{width: '42px'}} />)} {/* 日付列固定 */}
+                {showStats && <col style={{width: '120px'}} />} {/* 集計列 */}
+              </colgroup>
               <thead>
-                <tr className="header-date">
-                  <th className="empty-corner w-[140px] sticky left-0 z-30 border-r-[3.5px] border-[#C21642]"></th>
+                {/* 日付行 */}
+                <tr className="bg-white border-b border-gray-300 h-10">
+                  <th className="empty-corner border-r-[3px] border-[#C21642]"></th>
                   {datesInRange.map((d, i) => (
-                    <th key={i} className="text-[0.7rem] font-black text-gray-400 border-l border-gray-50 uppercase tracking-tighter">{d}</th>
+                    <th key={i} className="text-[0.7rem] font-bold text-gray-600 border-l border-gray-300">{d}</th>
                   ))}
-                  {showStats && <th colSpan={3} className="bg-gray-800 text-white text-[10px] font-black tracking-[0.2em] uppercase">Total Stats</th>}
+                  {showStats && <th className="bg-gray-800 text-white text-[10px] font-bold">集計</th>}
                 </tr>
-                <tr className="header-dow">
-                  <td className="empty-corner sticky left-0 z-30 border-r-[3.5px] border-[#C21642]"></td>
+                {/* 曜日行 */}
+                <tr className="bg-slate-50 border-b border-gray-300 h-6">
+                  <td className="empty-corner border-r-[3px] border-[#C21642]"></td>
                   {dowsInRange.map((dw, i) => {
-                    const cls = dw === '日' ? 'text-sun bg-red-50/50' : dw === '土' ? 'text-sat bg-blue-50/50' : 'text-gray-600';
-                    return <td key={i} className={`text-[11px] font-black border-l border-gray-100 ${cls}`}>{dw}</td>;
+                    const cls = dw === '日' ? 'text-sun bg-red-50' : dw === '土' ? 'text-sat bg-blue-50' : 'text-gray-500';
+                    return <td key={i} className={`text-[10px] font-bold border-l border-gray-300 text-center ${cls}`}>{dw}</td>;
                   })}
                   {showStats && (
-                    <Fragment>
-                      <td className="bg-gray-100 text-[9px] font-bold text-gray-400 border-l border-gray-200 stats-cell text-center">時間</td>
-                      <td className="bg-gray-100 text-[9px] font-bold text-gray-400 border-l border-gray-100 stats-cell text-center">公休</td>
-                      <td className="bg-gray-100 text-[9px] font-bold text-gray-400 border-l border-gray-100 stats-cell text-center">有給</td>
-                    </Fragment>
+                    <td className="bg-gray-100 text-[9px] font-bold text-center border-l border-gray-300">
+                      <span className="mr-2">時間</span> <span className="mr-2">休</span> <span>有</span>
+                    </td>
                   )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-300">
                 {data.staffs.map((staff, sIdx) => {
                   const isMito = staff.name.includes("みと");
                   return (
                     <Fragment key={sIdx}>
-                      <tr>
-                        <td rowSpan={2} className="name-cell px-4 py-3">{staff.name}</td>
+                      {/* 上段：シフト時間 */}
+                      <tr className="row-shift">
+                        <td rowSpan={2} className="name-cell border-b border-gray-400">
+                          {staff.name}
+                        </td>
                         {datesInRange.map((_, i) => {
                           const s = staff.shifts[start + i];
                           const dw = dowsInRange[i];
-                          let content = s;
-                          if (s === '×' || s === '公休') content = <span className="holiday-x">×</span>;
-                          else if (s === '有給') content = <span className="paid-leave">有給</span>;
-                          else if (s && /\d/.test(s)) content = <div className="time-badge">{s}</div>;
+                          const bgCls = dw === '日' ? 'bg-red-50' : dw === '土' ? 'bg-blue-50' : '';
                           
                           return (
-                            <td key={i} className={`shift-cell border-l border-gray-50 ${dw === '日' ? 'bg-red-50/20' : dw === '土' ? 'bg-blue-50/20' : ''} align-middle text-center`}>
-                              {content}
+                            <td key={i} className={`day-cell border-l border-gray-300 text-center ${bgCls}`}>
+                              {formatCellContent(s)}
                             </td>
                           );
                         })}
                         {showStats && (
-                          <Fragment>
-                            <td rowSpan={2} className="bg-slate-50 border-l border-gray-200 font-black text-sm align-middle stats-cell text-center">
-                              {(isMito && parseFloat(staff.total) === 0) ? "" : `${staff.total}h`}
-                            </td>
-                            <td rowSpan={2} className="bg-slate-50 border-l border-gray-100 font-black text-red-600 text-xl align-middle stats-cell tracking-tighter text-center">
-                              {(isMito && staff.holidays === 0) ? "" : staff.holidays}
-                            </td>
-                            <td rowSpan={2} className="bg-slate-50 border-l border-gray-100 font-black text-emerald-600 text-xl align-middle stats-cell tracking-tighter text-center">
-                              {(isMito && staff.paidLeave === 0) ? "" : staff.paidLeave}
-                            </td>
-                          </Fragment>
+                          <td rowSpan={2} className="bg-slate-50 border-l border-b border-gray-400 text-center align-middle p-1">
+                            <div className="flex justify-around items-center text-xs font-black">
+                              <span className="text-gray-800">{(isMito && parseFloat(staff.total)===0) ? "" : `${staff.total}h`}</span>
+                              <span className="text-red-600">{(isMito && staff.holidays===0) ? "" : staff.holidays}</span>
+                              <span className="text-emerald-600">{(isMito && staff.paidLeave===0) ? "" : staff.paidLeave}</span>
+                            </div>
+                          </td>
                         )}
                       </tr>
-                      <tr>
+                      {/* 下段：メモ（高さを確保） */}
+                      <tr className="row-memo border-b border-gray-400">
                         {datesInRange.map((_, i) => {
                           const m = staff.memos[start + i];
                           const dw = dowsInRange[i];
+                          const bgCls = dw === '日' ? 'bg-red-50' : dw === '土' ? 'bg-blue-50' : '';
                           return (
-                            <td key={i} className={`memo-cell border-l border-gray-50 ${dw === '日' ? 'bg-red-50/20' : dw === '土' ? 'bg-blue-50/20' : ''} align-top px-1 pt-0.5 text-center`}>
+                            <td key={i} className={`day-cell border-l border-gray-300 align-top pt-1 ${bgCls}`}>
                               <span className="memo-text">{m}</span>
                             </td>
                           );
