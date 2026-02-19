@@ -14,37 +14,43 @@
     
     body { font-family: 'Noto Sans JP', sans-serif; background-color: #ffffff; color: #1e293b; margin: 0; padding: 0; }
 
-    /* 印刷設定: A4横・2段組 */
+    /* 印刷設定: A4横・2ページ構成（上旬・下旬） */
     @media print {
       @page { size: A4 landscape; margin: 5mm; }
       body { background-color: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .no-print { display: none !important; }
       .print-container { padding: 0 !important; width: 100% !important; max-width: none !important; }
+      
+      /* 改ページ設定 */
       .page-break { break-after: page; page-break-after: always; height: 0; display: block; }
+      
+      /* 枠線を明示的につける */
       .table-wrapper { border: 2px solid #94a3b8 !important; border-radius: 0 !important; overflow: visible !important; }
       th, td { border: 1px solid #94a3b8 !important; }
+      
+      /* 印刷時の背景色強制適用 */
       .bg-red-50 { background-color: #fef2f2 !important; }
       .bg-blue-50 { background-color: #eff6ff !important; }
     }
 
-    /* 名前セル: 幅固定・中央揃え */
+    /* 名前セル: 幅と位置を固定、経堂レッドの太枠 */
     .name-cell { 
       background-color: #ffffff !important; 
       width: 140px !important; min-width: 140px !important;
       font-size: 1.2rem; font-weight: 900;
       text-align: center !important; vertical-align: middle !important;
-      color: #1e293b; border-right: 3px solid #C21642 !important;
+      color: #1e293b; border-right: 3.5px solid #C21642 !important;
       white-space: nowrap; overflow: hidden;
     }
     
-    /* 勤務時間バッジ */
+    /* 勤務時間バッジ: セル幅に合わせて調整、黒文字で視認性アップ */
     .time-badge { 
       display: inline-flex; align-items: center; justify-content: center;
       color: #1f2937; font-family: 'Roboto', sans-serif; font-size: 0.75rem; letter-spacing: -0.05em;
       font-weight: 900; line-height: 1; white-space: nowrap; padding: 2px 4px; width: 100%;
     }
 
-    /* メモテキスト */
+    /* メモテキスト: 視認性を上げるためにサイズ調整 */
     .memo-text {
       font-size: 0.7rem; color: #334155; font-weight: 700; line-height: 1.2;
       display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: center;
@@ -53,19 +59,21 @@
     .holiday-x { color: #dc2626; font-size: 1.1rem; font-weight: 700; opacity: 0.7; }
     .paid-leave { color: #059669; font-weight: 900; font-size: 0.85rem; background: #d1fae5; padding: 2px 6px; border-radius: 4px; }
     
-    /* 行・セル設定 */
+    /* セルサイズ定義: 15日が1枚に収まる最大幅 */
     .row-shift { height: 40px; }
-    .row-memo { height: 60px; } /* メモ欄を広く */
+    .row-memo { height: 60px; } 
     .day-cell {
       width: 90px !important; min-width: 90px !important; max-width: 90px !important;
       padding: 2px 4px !important; vertical-align: middle; text-align: center;
     }
     
+    /* 土日色分け */
     .text-sun { color: #dc2626 !important; }
     .text-sat { color: #2563eb !important; }
     .bg-sun { background-color: #fef2f2 !important; }
     .bg-sat { background-color: #eff6ff !important; }
 
+    /* タイトルセクション */
     .table-title {
       font-size: 1.4rem; font-weight: 900; color: #C21642;
       padding: 8px 20px; background-color: #fff1f2; border-left: 8px solid #C21642;
@@ -75,6 +83,7 @@
     .tier-container { margin-bottom: 0; page-break-inside: avoid; }
     .stats-cell { background-color: #f8fafc !important; font-weight: 900; font-size: 0.8rem !important; }
     
+    /* ローダーアニメーション */
     .loader {
       border: 4px solid #f3f3f3; border-top: 4px solid #C21642; border-radius: 50%;
       width: 40px; height: 40px; animation: spin 1s linear infinite; display: inline-block;
@@ -89,12 +98,12 @@
     const { useState, useEffect, Fragment } = React;
 
     const CONFIG = {
-      // ★提供されたGAS URLを設定済み
-      GAS_API_URL: "https://script.google.com/macros/s/AKfycbyLLX4EzfuvswXUgFwL19U8ZeZcuQ4pr287p-etGdEwG3Ej6kFMCAqkqR2hlr1FvaEo/exec" 
+      // ★ ご提示いただいた新しいデプロイURLに差し替え済み
+      GAS_API_URL: "https://script.google.com/macros/s/AKfycbxI3XpbAsaDRE-SVejNFVk2X1_vbaeT86GCOQgzW1sohoj005y64pKJdrCWmLsPBp16rQ/exec" 
     };
 
     /**
-     * データ整形関数
+     * 表示データの整形
      */
     function formatCellContent(value) {
       if (!value) return "";
@@ -102,7 +111,7 @@
       if (str === '×' || str === '公休' || str === '休') return <span className="holiday-x">×</span>;
       if (str.includes('有給') || str.includes('有休')) return <span className="paid-leave">有給</span>;
       
-      // 変な英語の日付対策
+      // 日本標準時等の長い日付データが混入した場合の救済ロジック
       if (str.includes("GMT") || (str.match(/[A-Za-z]{3}\s[A-Za-z]{3}/) && str.length > 10)) {
         try {
           const d = new Date(str);
@@ -116,7 +125,7 @@
         } catch (e) { return <span className="text-[8px] text-red-300">Err</span>; }
       }
 
-      // 数字を含む場合（時間）
+      // 数字が含まれる場合は勤務時間としてバッジ表示
       if (/\d/.test(str)) return <div className="time-badge">{str}</div>;
       return <span className="text-xs font-bold text-gray-500">{str}</span>;
     }
@@ -129,14 +138,12 @@
       useEffect(() => {
         const fetchData = async () => {
           try {
-            if (CONFIG.GAS_API_URL.includes("YOUR_GAS")) throw new Error("GASのURLが設定されていません。index.htmlを編集してください。");
-            
             const res = await fetch(CONFIG.GAS_API_URL);
             const json = await res.json();
             if (json.error) throw new Error(json.error);
             setData(json);
           } catch (err) {
-            setError(err.message || "データ取得エラー");
+            setError(err.message || "スプレッドシートの読み込みに失敗しました。GAS側で「全員」に権限が与えられているか確認してください。");
           } finally {
             setLoading(false);
           }
@@ -147,39 +154,40 @@
       if (loading) return (
         <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
           <div className="loader"></div>
-          <p className="font-bold text-gray-400 tracking-widest text-xs">LOADING...</p>
+          <p className="font-bold text-gray-400 tracking-widest text-xs uppercase">Connecting to kyodo database...</p>
         </div>
       );
 
       if (error) return (
-        <div className="p-10 text-center">
-          <p className="text-red-500 font-bold mb-4">{error}</p>
-          <button onClick={() => window.location.reload()} className="bg-gray-200 px-4 py-2 rounded">Retry</button>
+        <div className="p-10 text-center flex flex-col items-center justify-center min-h-screen">
+          <div className="bg-red-50 p-8 rounded-3xl border-2 border-red-200">
+            <p className="text-red-600 font-black text-xl mb-4">データ取得エラー</p>
+            <p className="text-red-500 font-medium mb-6 max-w-md">{error}</p>
+            <button onClick={() => window.location.reload()} className="bg-red-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-red-700 transition">再読み込み</button>
+          </div>
         </div>
       );
 
       return (
         <div className="p-2 md:p-6 print:p-0">
           <div className="max-w-full mx-auto">
-            {/* ヘッダー */}
+            {/* 画面上のヘッダー */}
             <header className="flex justify-between items-end mb-6 no-print border-b pb-4">
               <h1 className="text-3xl font-black text-gray-800">{data.month}</h1>
-              <div className="text-sm text-gray-500 font-bold">
-                ※印刷時は「横向き」「倍率: 用紙に合わせる」に設定してください
-              </div>
-              <button onClick={() => window.print()} className="bg-gray-900 text-white px-6 py-3 rounded-lg font-bold hover:bg-black transition shadow-lg">
-                印刷する (A4横)
+              <button onClick={() => window.print()} className="bg-gray-900 text-white px-8 py-4 rounded-xl font-bold hover:bg-black transition shadow-2xl flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                A4横で印刷する
               </button>
             </header>
 
             <main>
-              {/* 1ページ目: 上旬 (1日〜15日) */}
+              {/* 1ページ目: 1日〜15日 */}
               <ShiftTierTable data={data} start={0} end={15} label="上旬 (1日〜15日)" />
               
-              {/* 強制改ページ */}
+              {/* 強制改ページ命令 */}
               <div className="page-break"></div>
               
-              {/* 2ページ目: 下旬 (16日〜末日) + 集計 */}
+              {/* 2ページ目: 16日〜末日 + 自動計算集計 */}
               <ShiftTierTable data={data} start={15} end={data.dates.length} label="下旬 (16日〜末日)" showStats={true} />
             </main>
           </div>
@@ -191,49 +199,49 @@
       const datesInRange = data.dates.slice(start, end);
       const dowsInRange = data.dows.slice(start, end);
 
-      // ★ここで「ひばり」を含むスタッフ行を除外フィルター
+      // ★「ひばり」と名のつくスタッフや行をフィルタリングして除外
       const filteredStaffs = data.staffs.filter(staff => 
         !staff.name.includes("ひばり") && staff.name !== "ひばりが丘"
       );
 
       return (
         <div className="tier-container">
-          <div className="table-title">{label}</div>
-          <div className="table-wrapper border border-gray-400 overflow-hidden">
+          <div className="table-title no-print">{label}</div>
+          <div className="table-wrapper border border-gray-400 overflow-hidden shadow-sm">
             <table className="w-full border-collapse bg-white table-fixed">
               <colgroup>
-                <col style={{width: '140px'}} /> {/* 名前列 */}
-                {datesInRange.map((_, i) => <col key={i} style={{width: '90px'}} />)} {/* 日付列 */}
+                <col style={{width: '140px'}} /> {/* 名前列固定 */}
+                {datesInRange.map((_, i) => <col key={i} style={{width: '90px'}} />)} {/* 日付列: 90px拡大固定 */}
                 {showStats && (
-                  <>
+                  <Fragment>
                     <col style={{width: '60px'}} />
                     <col style={{width: '40px'}} />
                     <col style={{width: '40px'}} />
-                  </>
+                  </Fragment>
                 )}
               </colgroup>
               <thead>
-                {/* 日付行 */}
+                {/* 日付ヘッダー */}
                 <tr className="bg-white border-b border-gray-300 h-10">
-                  <th className="empty-corner border-r-[3px] border-[#C21642]"></th>
+                  <th className="empty-corner border-r-[3.5px] border-[#C21642]"></th>
                   {datesInRange.map((d, i) => (
-                    <th key={i} className="text-[0.85rem] font-bold text-gray-700 border-l border-gray-300">{d}</th>
+                    <th key={i} className="text-[0.85rem] font-black text-gray-700 border-l border-gray-300">{d}</th>
                   ))}
                   {showStats && <th colSpan={3} className="bg-gray-800 text-white text-[10px] font-bold">集計</th>}
                 </tr>
-                {/* 曜日行 */}
+                {/* 曜日ヘッダー */}
                 <tr className="bg-slate-50 border-b border-gray-300 h-8">
-                  <td className="empty-corner border-r-[3px] border-[#C21642]"></td>
+                  <td className="empty-corner border-r-[3.5px] border-[#C21642]"></td>
                   {dowsInRange.map((dw, i) => {
                     const cls = dw === '日' ? 'text-sun bg-red-50' : dw === '土' ? 'text-sat bg-blue-50' : 'text-gray-500';
-                    return <td key={i} className={`text-[0.8rem] font-bold border-l border-gray-300 text-center ${cls}`}>{dw}</td>;
+                    return <td key={i} className={`text-[0.8rem] font-black border-l border-gray-300 text-center ${cls}`}>{dw}</td>;
                   })}
                   {showStats && (
-                    <>
+                    <Fragment>
                       <td className="bg-gray-100 text-[9px] font-bold text-center border-l border-gray-300">時間</td>
-                      <td className="bg-gray-100 text-[9px] font-bold text-center border-l border-gray-100">休</td>
-                      <td className="bg-gray-100 text-[9px] font-bold text-center border-l border-gray-100">有</td>
-                    </>
+                      <td className="bg-gray-100 text-[9px] font-bold text-center border-l border-gray-300">休</td>
+                      <td className="bg-gray-100 text-[9px] font-bold text-center border-l border-gray-300">有</td>
+                    </Fragment>
                   )}
                 </tr>
               </thead>
@@ -242,7 +250,7 @@
                   const isMito = staff.name.includes("みと");
                   return (
                     <Fragment key={sIdx}>
-                      {/* 上段：シフト時間 */}
+                      {/* 上段：シフト（勤務時間） */}
                       <tr className="row-shift">
                         <td rowSpan={2} className="name-cell border-b border-gray-400">
                           {staff.name}
@@ -250,7 +258,7 @@
                         {datesInRange.map((_, i) => {
                           const s = staff.shifts[start + i];
                           const dw = dowsInRange[i];
-                          const bgCls = dw === '日' ? 'bg-red-50' : dw === '土' ? 'bg-blue-50' : '';
+                          const bgCls = dw === '日' ? 'bg-red-50/30' : dw === '土' ? 'bg-blue-50/30' : '';
                           
                           return (
                             <td key={i} className={`day-cell border-l border-gray-300 text-center ${bgCls}`}>
@@ -259,7 +267,7 @@
                           );
                         })}
                         {showStats && (
-                          <>
+                          <Fragment>
                             <td rowSpan={2} className="bg-slate-50 border-l border-b border-gray-400 text-center align-middle p-1 stats-cell">
                               {(isMito && parseFloat(staff.total)===0) ? "" : `${staff.total}h`}
                             </td>
@@ -269,15 +277,15 @@
                             <td rowSpan={2} className="bg-slate-50 border-l border-b border-gray-400 text-center align-middle p-1 stats-cell text-emerald-600">
                               {(isMito && staff.paidLeave===0) ? "" : staff.paidLeave}
                             </td>
-                          </>
+                          </Fragment>
                         )}
                       </tr>
-                      {/* 下段：メモ */}
+                      {/* 下段：備考（メモ書き） */}
                       <tr className="row-memo border-b border-gray-400">
                         {datesInRange.map((_, i) => {
                           const m = staff.memos[start + i];
                           const dw = dowsInRange[i];
-                          const bgCls = dw === '日' ? 'bg-red-50' : dw === '土' ? 'bg-blue-50' : '';
+                          const bgCls = dw === '日' ? 'bg-red-50/30' : dw === '土' ? 'bg-blue-50/30' : '';
                           return (
                             <td key={i} className={`day-cell border-l border-gray-300 align-top pt-1 ${bgCls}`}>
                               <span className="memo-text">{m}</span>
