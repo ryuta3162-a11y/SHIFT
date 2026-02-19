@@ -19,30 +19,30 @@
       margin: 0; padding: 0;
     }
 
-    /* 印刷設定: A4横・余白極小 */
+    /* 印刷設定: A4横 */
     @media print {
-      @page { size: A4 landscape; margin: 4mm; }
-      body { background-color: white; -webkit-print-color-adjust: exact; }
+      @page { size: A4 landscape; margin: 5mm; }
+      body { background-color: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .no-print { display: none !important; }
       .print-container { padding: 0 !important; width: 100% !important; max-width: none !important; }
-      /* 枠線を強制 */
+      
+      /* 改ページ設定 */
+      .page-break { break-after: page; page-break-after: always; height: 0; display: block; }
+      
       .table-wrapper { border: 2px solid #94a3b8 !important; border-radius: 0 !important; overflow: visible !important; }
       th, td { border: 1px solid #94a3b8 !important; }
-      /* 背景色を印刷に出す */
+      
+      /* 印刷時は背景色を強制適用 */
       .bg-red-50 { background-color: #fef2f2 !important; }
       .bg-blue-50 { background-color: #eff6ff !important; }
     }
 
-    /* ヘッダー固定解除（印刷時は固定しない） */
-    .header-fixed { position: sticky; top: 0; z-index: 50; }
-    
-    /* 名前セル: 幅と高さを完全固定 */
+    /* 名前セル: 幅固定 */
     .name-cell { 
       background-color: #ffffff !important; 
-      width: 120px !important; /* 幅固定 */
-      min-width: 120px !important;
-      max-width: 120px !important;
-      font-size: 1.1rem;
+      width: 140px !important; 
+      min-width: 140px !important;
+      font-size: 1.2rem;
       font-weight: 900;
       text-align: center !important; 
       vertical-align: middle !important;
@@ -52,47 +52,50 @@
       white-space: nowrap;
     }
     
-    /* 勤務時間バッジ: 黒文字・シンプル化 */
+    /* 勤務時間バッジ: サイズ調整と文字間詰め */
     .time-badge { 
-      display: inline-block;
-      color: #1f2937; /* 黒に近いグレー */
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #1f2937;
       font-family: 'Roboto', sans-serif;
-      font-size: 0.85rem;
+      font-size: 0.75rem; /* サイズ縮小 */
+      letter-spacing: -0.05em; /* 文字間を詰める */
       font-weight: 900;
       line-height: 1;
       white-space: nowrap;
+      padding: 2px 4px;
+      width: 100%; /* 親要素に合わせて広げる */
     }
 
-    /* メモテキスト: 大きく表示 */
+    /* メモテキスト */
     .memo-text {
-      font-size: 0.75rem; /* サイズアップ */
+      font-size: 0.7rem;
       color: #334155;
       font-weight: 700;
-      line-height: 1.1;
-      display: -webkit-box;
-      -webkit-line-clamp: 3; /* 3行まで表示 */
-      -webkit-box-orient: vertical;
+      line-height: 1.2;
+      display: block;
       overflow: hidden;
-      word-break: break-all;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      text-align: center;
     }
 
-    /* 公休（×）: 小さく控えめに */
-    .holiday-x { color: #dc2626; font-size: 1.0rem; font-weight: 700; opacity: 0.7; }
+    .holiday-x { color: #dc2626; font-size: 1.1rem; font-weight: 700; opacity: 0.7; }
+    .paid-leave { color: #059669; font-weight: 900; font-size: 0.85rem; background: #d1fae5; padding: 2px 6px; border-radius: 4px; }
     
-    /* 有給 */
-    .paid-leave { color: #059669; font-weight: 900; font-size: 0.8rem; background: #d1fae5; padding: 2px 4px; border-radius: 4px; }
+    /* 行の高さ */
+    .row-shift { height: 40px; }
+    .row-memo { height: 60px; }
     
-    /* 行の高さ設定: 下段を広く */
-    .row-shift { height: 35px; } /* 上段 */
-    .row-memo { height: 55px; }  /* 下段（1.5倍程度） */
-    
-    /* セル共通: 幅固定 */
+    /* セル幅の拡張設定: 90pxに拡大 */
     .day-cell {
-      width: 42px !important; /* 日付列の幅固定 */
-      min-width: 42px !important;
-      max-width: 42px !important;
-      padding: 2px !important;
+      width: 90px !important; /* 70px -> 90px に拡大 */
+      min-width: 90px !important;
+      max-width: 90px !important;
+      padding: 2px 4px !important;
       vertical-align: middle;
+      text-align: center;
     }
     
     /* 土日カラー */
@@ -101,17 +104,16 @@
     .bg-sun { background-color: #fef2f2 !important; }
     .bg-sat { background-color: #eff6ff !important; }
 
-    /* タイトルデザイン */
+    /* タイトル */
     .table-title {
-      font-size: 1.2rem; font-weight: 900; color: #C21642;
-      padding: 5px 15px; background-color: #fff1f2; border-left: 6px solid #C21642;
-      margin-bottom: 10px; display: inline-block;
+      font-size: 1.4rem; font-weight: 900; color: #C21642;
+      padding: 8px 20px; background-color: #fff1f2; border-left: 8px solid #C21642;
+      margin-bottom: 15px; display: inline-block;
     }
 
-    .tier-container { margin-bottom: 20px; page-break-inside: avoid; }
-    .stats-cell { background-color: #f8fafc !important; font-weight: 900; font-size: 0.75rem !important; }
+    .tier-container { margin-bottom: 0; page-break-inside: avoid; }
+    .stats-cell { background-color: #f8fafc !important; font-weight: 900; font-size: 0.8rem !important; }
     
-    /* ローダー */
     .loader {
       border: 4px solid #f3f3f3; border-top: 4px solid #C21642; border-radius: 50%;
       width: 40px; height: 40px; animation: spin 1s linear infinite; display: inline-block;
@@ -126,53 +128,35 @@
     const { useState, useEffect, Fragment } = React;
 
     const CONFIG = {
-      // 以前いただいたGAS URL
+      // 提供されたGAS URL
       GAS_API_URL: "https://script.google.com/macros/s/AKfycbyLLX4EzfuvswXUgFwL19U8ZeZcuQ4pr287p-etGdEwG3Ej6kFMCAqkqR2hlr1FvaEo/exec" 
     };
 
     /**
-     * 日付文字列整形関数
-     * 変な英語の日付(Mon Oct...)が来ても、強制的に見やすく変換します
+     * データ整形関数
      */
     function formatCellContent(value) {
       if (!value) return "";
-      
-      // 文字列に変換
       const str = String(value);
-
-      // "×" や "公休" はそのまま
       if (str === '×' || str === '公休' || str === '休') return <span className="holiday-x">×</span>;
-      
-      // "有給"
       if (str.includes('有給') || str.includes('有休')) return <span className="paid-leave">有給</span>;
-
-      // 長い英語の日付フォーマット (例: Mon Oct 19 2026...) が混入した場合の救済処理
+      
+      // 変な英語の日付対策
       if (str.includes("GMT") || (str.match(/[A-Za-z]{3}\s[A-Za-z]{3}/) && str.length > 10)) {
         try {
           const d = new Date(str);
           if (!isNaN(d.getTime())) {
-            // 時間があれば時間を、なければ日付を表示
             const h = d.getHours();
             const m = d.getMinutes();
-            if (h === 0 && m === 0) {
-              // 時間が0:00なら日付だけ表示 (例: 19日)
-              return <span className="text-xs text-gray-400 font-bold">{d.getDate()}日</span>;
-            }
-            // 時間があれば "9:30" のように整形
+            if (h === 0 && m === 0) return <span className="text-xs text-gray-400 font-bold">{d.getDate()}日</span>;
             const timeStr = `${h}:${m.toString().padStart(2, '0')}`;
             return <div className="time-badge">{timeStr}</div>;
           }
-        } catch (e) {
-          return <span className="text-[8px] text-red-300">Err</span>;
-        }
+        } catch (e) { return <span className="text-[8px] text-red-300">Err</span>; }
       }
 
-      // 通常の数字（時間）の場合 "9-18" や "13:00"
-      if (/\d/.test(str)) {
-        return <div className="time-badge">{str}</div>;
-      }
-
-      // それ以外（文字データなど）
+      // 数字を含む場合（時間）
+      if (/\d/.test(str)) return <div className="time-badge">{str}</div>;
       return <span className="text-xs font-bold text-gray-500">{str}</span>;
     }
 
@@ -213,23 +197,26 @@
 
       return (
         <div className="p-2 md:p-6 print:p-0">
-          <div className="max-w-[1600px] mx-auto">
+          <div className="max-w-full mx-auto">
             {/* ヘッダー */}
             <header className="flex justify-between items-end mb-6 no-print border-b pb-4">
               <h1 className="text-3xl font-black text-gray-800">{data.month}</h1>
+              <div className="text-sm text-gray-500 font-bold">
+                ※印刷時は「横向き」「倍率: 用紙に合わせる」に設定してください
+              </div>
               <button onClick={() => window.print()} className="bg-gray-900 text-white px-6 py-3 rounded-lg font-bold hover:bg-black transition shadow-lg">
                 印刷する (A4横)
               </button>
             </header>
 
             <main>
-              {/* 1日〜15日 */}
+              {/* 1ページ目: 上旬 (1日〜15日) */}
               <ShiftTierTable data={data} start={0} end={15} label="上旬 (1日〜15日)" />
               
-              {/* 印刷時の改ページ調整用スペーサー */}
-              <div className="h-8 print:h-4"></div>
+              {/* 強制改ページ */}
+              <div className="page-break"></div>
               
-              {/* 16日〜末日 */}
+              {/* 2ページ目: 下旬 (16日〜末日) + 集計 */}
               <ShiftTierTable data={data} start={15} end={data.dates.length} label="下旬 (16日〜末日)" showStats={true} />
             </main>
           </div>
@@ -243,34 +230,42 @@
 
       return (
         <div className="tier-container">
-          <div className="table-title no-print">{label}</div>
+          <div className="table-title">{label}</div>
           <div className="table-wrapper border border-gray-400 overflow-hidden">
             <table className="w-full border-collapse bg-white table-fixed">
               <colgroup>
-                <col style={{width: '120px'}} /> {/* 名前列固定 */}
-                {datesInRange.map((_, i) => <col key={i} style={{width: '42px'}} />)} {/* 日付列固定 */}
-                {showStats && <col style={{width: '120px'}} />} {/* 集計列 */}
+                <col style={{width: '140px'}} /> {/* 名前列 */}
+                {datesInRange.map((_, i) => <col key={i} style={{width: '90px'}} />)} {/* 日付列: 90pxに拡大 */}
+                {showStats && (
+                  <>
+                    <col style={{width: '60px'}} />
+                    <col style={{width: '40px'}} />
+                    <col style={{width: '40px'}} />
+                  </>
+                )}
               </colgroup>
               <thead>
                 {/* 日付行 */}
                 <tr className="bg-white border-b border-gray-300 h-10">
                   <th className="empty-corner border-r-[3px] border-[#C21642]"></th>
                   {datesInRange.map((d, i) => (
-                    <th key={i} className="text-[0.7rem] font-bold text-gray-600 border-l border-gray-300">{d}</th>
+                    <th key={i} className="text-[0.85rem] font-bold text-gray-700 border-l border-gray-300">{d}</th>
                   ))}
-                  {showStats && <th className="bg-gray-800 text-white text-[10px] font-bold">集計</th>}
+                  {showStats && <th colSpan={3} className="bg-gray-800 text-white text-[10px] font-bold">集計</th>}
                 </tr>
                 {/* 曜日行 */}
-                <tr className="bg-slate-50 border-b border-gray-300 h-6">
+                <tr className="bg-slate-50 border-b border-gray-300 h-8">
                   <td className="empty-corner border-r-[3px] border-[#C21642]"></td>
                   {dowsInRange.map((dw, i) => {
                     const cls = dw === '日' ? 'text-sun bg-red-50' : dw === '土' ? 'text-sat bg-blue-50' : 'text-gray-500';
-                    return <td key={i} className={`text-[10px] font-bold border-l border-gray-300 text-center ${cls}`}>{dw}</td>;
+                    return <td key={i} className={`text-[0.8rem] font-bold border-l border-gray-300 text-center ${cls}`}>{dw}</td>;
                   })}
                   {showStats && (
-                    <td className="bg-gray-100 text-[9px] font-bold text-center border-l border-gray-300">
-                      <span className="mr-2">時間</span> <span className="mr-2">休</span> <span>有</span>
-                    </td>
+                    <>
+                      <td className="bg-gray-100 text-[9px] font-bold text-center border-l border-gray-300">時間</td>
+                      <td className="bg-gray-100 text-[9px] font-bold text-center border-l border-gray-100">休</td>
+                      <td className="bg-gray-100 text-[9px] font-bold text-center border-l border-gray-100">有</td>
+                    </>
                   )}
                 </tr>
               </thead>
@@ -296,16 +291,20 @@
                           );
                         })}
                         {showStats && (
-                          <td rowSpan={2} className="bg-slate-50 border-l border-b border-gray-400 text-center align-middle p-1">
-                            <div className="flex justify-around items-center text-xs font-black">
-                              <span className="text-gray-800">{(isMito && parseFloat(staff.total)===0) ? "" : `${staff.total}h`}</span>
-                              <span className="text-red-600">{(isMito && staff.holidays===0) ? "" : staff.holidays}</span>
-                              <span className="text-emerald-600">{(isMito && staff.paidLeave===0) ? "" : staff.paidLeave}</span>
-                            </div>
-                          </td>
+                          <>
+                            <td rowSpan={2} className="bg-slate-50 border-l border-b border-gray-400 text-center align-middle p-1 stats-cell">
+                              {(isMito && parseFloat(staff.total)===0) ? "" : `${staff.total}h`}
+                            </td>
+                            <td rowSpan={2} className="bg-slate-50 border-l border-b border-gray-400 text-center align-middle p-1 stats-cell text-red-600">
+                              {(isMito && staff.holidays===0) ? "" : staff.holidays}
+                            </td>
+                            <td rowSpan={2} className="bg-slate-50 border-l border-b border-gray-400 text-center align-middle p-1 stats-cell text-emerald-600">
+                              {(isMito && staff.paidLeave===0) ? "" : staff.paidLeave}
+                            </td>
+                          </>
                         )}
                       </tr>
-                      {/* 下段：メモ（高さを確保） */}
+                      {/* 下段：メモ */}
                       <tr className="row-memo border-b border-gray-400">
                         {datesInRange.map((_, i) => {
                           const m = staff.memos[start + i];
