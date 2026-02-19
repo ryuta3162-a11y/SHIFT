@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>経堂シフト閲覧ポータル | Kyodo Shift Dashboard</title>
-  <!-- 外部ライブラリ (CDN) -->
+  <!-- React & Tailwind CDN -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -12,99 +12,60 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Roboto:wght@700&display=swap');
     
-    body { 
-      font-family: 'Noto Sans JP', sans-serif; 
-      background-color: #ffffff; 
-      color: #1e293b;
-      margin: 0; padding: 0;
-    }
+    body { font-family: 'Noto Sans JP', sans-serif; background-color: #ffffff; color: #1e293b; margin: 0; padding: 0; }
 
-    /* 印刷設定: A4横 */
+    /* 印刷設定: A4横・2段組 */
     @media print {
       @page { size: A4 landscape; margin: 5mm; }
       body { background-color: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .no-print { display: none !important; }
       .print-container { padding: 0 !important; width: 100% !important; max-width: none !important; }
-      
-      /* 改ページ設定 */
       .page-break { break-after: page; page-break-after: always; height: 0; display: block; }
-      
       .table-wrapper { border: 2px solid #94a3b8 !important; border-radius: 0 !important; overflow: visible !important; }
       th, td { border: 1px solid #94a3b8 !important; }
-      
-      /* 印刷時は背景色を強制適用 */
       .bg-red-50 { background-color: #fef2f2 !important; }
       .bg-blue-50 { background-color: #eff6ff !important; }
     }
 
-    /* 名前セル: 幅固定 */
+    /* 名前セル: 幅固定・中央揃え */
     .name-cell { 
       background-color: #ffffff !important; 
-      width: 140px !important; 
-      min-width: 140px !important;
-      font-size: 1.2rem;
-      font-weight: 900;
-      text-align: center !important; 
-      vertical-align: middle !important;
-      color: #1e293b;
-      border-right: 3px solid #C21642 !important;
-      overflow: hidden;
-      white-space: nowrap;
+      width: 140px !important; min-width: 140px !important;
+      font-size: 1.2rem; font-weight: 900;
+      text-align: center !important; vertical-align: middle !important;
+      color: #1e293b; border-right: 3px solid #C21642 !important;
+      white-space: nowrap; overflow: hidden;
     }
     
-    /* 勤務時間バッジ: サイズ調整と文字間詰め */
+    /* 勤務時間バッジ */
     .time-badge { 
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      color: #1f2937;
-      font-family: 'Roboto', sans-serif;
-      font-size: 0.75rem; /* サイズ縮小 */
-      letter-spacing: -0.05em; /* 文字間を詰める */
-      font-weight: 900;
-      line-height: 1;
-      white-space: nowrap;
-      padding: 2px 4px;
-      width: 100%; /* 親要素に合わせて広げる */
+      display: inline-flex; align-items: center; justify-content: center;
+      color: #1f2937; font-family: 'Roboto', sans-serif; font-size: 0.75rem; letter-spacing: -0.05em;
+      font-weight: 900; line-height: 1; white-space: nowrap; padding: 2px 4px; width: 100%;
     }
 
     /* メモテキスト */
     .memo-text {
-      font-size: 0.7rem;
-      color: #334155;
-      font-weight: 700;
-      line-height: 1.2;
-      display: block;
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      text-align: center;
+      font-size: 0.7rem; color: #334155; font-weight: 700; line-height: 1.2;
+      display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: center;
     }
 
     .holiday-x { color: #dc2626; font-size: 1.1rem; font-weight: 700; opacity: 0.7; }
     .paid-leave { color: #059669; font-weight: 900; font-size: 0.85rem; background: #d1fae5; padding: 2px 6px; border-radius: 4px; }
     
-    /* 行の高さ */
+    /* 行・セル設定 */
     .row-shift { height: 40px; }
-    .row-memo { height: 60px; }
-    
-    /* セル幅の拡張設定: 90pxに拡大 */
+    .row-memo { height: 60px; } /* メモ欄を広く */
     .day-cell {
-      width: 90px !important; /* 70px -> 90px に拡大 */
-      min-width: 90px !important;
-      max-width: 90px !important;
-      padding: 2px 4px !important;
-      vertical-align: middle;
-      text-align: center;
+      width: 90px !important; min-width: 90px !important; max-width: 90px !important;
+      padding: 2px 4px !important; vertical-align: middle; text-align: center;
     }
     
-    /* 土日カラー */
     .text-sun { color: #dc2626 !important; }
     .text-sat { color: #2563eb !important; }
     .bg-sun { background-color: #fef2f2 !important; }
     .bg-sat { background-color: #eff6ff !important; }
 
-    /* タイトル */
     .table-title {
       font-size: 1.4rem; font-weight: 900; color: #C21642;
       padding: 8px 20px; background-color: #fff1f2; border-left: 8px solid #C21642;
@@ -128,7 +89,7 @@
     const { useState, useEffect, Fragment } = React;
 
     const CONFIG = {
-      // 提供されたGAS URL
+      // ★提供されたGAS URLを設定済み
       GAS_API_URL: "https://script.google.com/macros/s/AKfycbyLLX4EzfuvswXUgFwL19U8ZeZcuQ4pr287p-etGdEwG3Ej6kFMCAqkqR2hlr1FvaEo/exec" 
     };
 
@@ -168,6 +129,8 @@
       useEffect(() => {
         const fetchData = async () => {
           try {
+            if (CONFIG.GAS_API_URL.includes("YOUR_GAS")) throw new Error("GASのURLが設定されていません。index.htmlを編集してください。");
+            
             const res = await fetch(CONFIG.GAS_API_URL);
             const json = await res.json();
             if (json.error) throw new Error(json.error);
@@ -228,6 +191,11 @@
       const datesInRange = data.dates.slice(start, end);
       const dowsInRange = data.dows.slice(start, end);
 
+      // ★ここで「ひばり」を含むスタッフ行を除外フィルター
+      const filteredStaffs = data.staffs.filter(staff => 
+        !staff.name.includes("ひばり") && staff.name !== "ひばりが丘"
+      );
+
       return (
         <div className="tier-container">
           <div className="table-title">{label}</div>
@@ -235,7 +203,7 @@
             <table className="w-full border-collapse bg-white table-fixed">
               <colgroup>
                 <col style={{width: '140px'}} /> {/* 名前列 */}
-                {datesInRange.map((_, i) => <col key={i} style={{width: '90px'}} />)} {/* 日付列: 90pxに拡大 */}
+                {datesInRange.map((_, i) => <col key={i} style={{width: '90px'}} />)} {/* 日付列 */}
                 {showStats && (
                   <>
                     <col style={{width: '60px'}} />
@@ -270,7 +238,7 @@
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-300">
-                {data.staffs.map((staff, sIdx) => {
+                {filteredStaffs.map((staff, sIdx) => {
                   const isMito = staff.name.includes("みと");
                   return (
                     <Fragment key={sIdx}>
